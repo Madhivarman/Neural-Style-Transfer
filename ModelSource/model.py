@@ -60,8 +60,8 @@ def readImage(content, style):
 	#bgr image
 	def read(img):
 		image = cv2.imread(img, cv2.IMREAD_COLOR)
-		image = image.astype(np.float32)
-		return image
+		picture = image.astype('float')
+		return picture
 
 	srcimg = read(content)
 	styleimg = read(style)
@@ -304,6 +304,7 @@ def applyStyle(content_image, style_image, parser, architecture, init_img):
 	with tf.Session() as sess:
 		#build the architecture
 		network = architecture.buildModel(content_image)
+		print("\n---- MODEL ARCHITECTURE IS DEFINED AND SUCCESFULLY LOADED----\n")
 		#style loss
 		if parser.style_mask:
 			L_style = sum_masked_style_losses(sess, network, style_image, parser)
@@ -377,7 +378,7 @@ def main():
 
 	#add model weights
 	parser.add_argument('--modelweights', type=str,
-		default='imagenet-vgg-verydeep-19.mat',
+		default='../imagenet-vgg-verydeep-19.mat',
 		help='Weights and Biases of the VGG-19 Network')
 
 
@@ -442,7 +443,7 @@ def main():
 		help='Contributions (weights) of each style layer loss function')
 
 	#noise ration
-	parser.add_argument('--noise_ratio', type='float',
+	parser.add_argument('--noise_ratio', type=float,
 		default=1.0,
 		help='Interpolation value between the content image and noise image if the network is initialized with random weights')
 
@@ -487,7 +488,7 @@ def main():
 	#default content image name
 	parser.add_argument('--content_img', type=str,
 		default='style_image.jpg',
-		style='Filename of the Content Image')
+		help='Filename of the Content Image')
 
 
 	args = parser.parse_args()
