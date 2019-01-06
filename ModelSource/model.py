@@ -3,6 +3,8 @@ import numpy as np
 import argparse
 import cv2
 import time
+import os
+
 from network import Network
 
 #preprocess image
@@ -60,7 +62,7 @@ def readImage(content, style):
 	#bgr image
 	def read(img):
 		image = cv2.imread(img, cv2.IMREAD_COLOR)
-		picture = image.astype('float')
+		picture = image.astype(np.float32)
 		return picture
 
 	srcimg = read(content)
@@ -84,14 +86,17 @@ def get_content_image(img, parser):
 
 	return img
 
-def get_style_image(content_img, styleimg):
+def get_style_image(content_img, styleImage):
 
 	_, h, w, d = content_img.shape
-	#resize the style image
-	img = cv2.resize(styleimg, dsize=(h, w), interpolation=cv2.INTER_AREA)
-	img = preprocess(img)
+	style_imgs = []
 
-	return img
+	#resize the style image
+	img = cv2.resize(styleImage, dsize=(w, h), interpolation=cv2.INTER_AREA)
+	img = preprocess(img)
+	style_imgs.append(img)
+
+	return style_imgs
 
 #<!--Gram Matrix-->
 def gram_matrix(x, area, depth):
@@ -117,24 +122,26 @@ def style_layer_loss(a, x):
 
 #<!--Loss Layer for normal content image-->
 def sum_style_losses(sess, net, style_imgs, parser):
-	total_style_loss = 0.
-	weights = parser.style_imgs_weights
-	#iterate through the images
-	for img, img_weight in zip(style_imgs, weights):
-		sess.run(net['input'].assign(img))
-		style_loss = 0.
-		for layer, weight in zip(parser.style_layers, parser.style_layer_weights):
-			a = sess.run()
-			x = net[layer]
-			a = tf.convert_to_tensor(a)
+	  total_style_loss = 0.
+	  weights = parser.style_imgs_weights
 
-			style_loss += style_layer_loss(a, x) * weights
-		style_loss /= float(len(parser.style_layers))
-		total_style_loss += (style_loss * img_weight)
+	  #iteration starts
+	  for img, img_weight in zip(style_imgs, weights):
+	    sess.run(net['input'].assign(img))
+	    style_loss = 0.
 
-	total_style_loss /= float(len(style_imgs))
+	    #iterate through layers and weights
+	    for layer, weight in zip(parser.style_layers, parser.style_layer_weights):
+	      a = sess.run(net[layer])
+	      x = net[layer]
+	      a = tf.convert_to_tensor(a)
+	      style_loss += style_layer_loss(a, x) * weight
 
-	return total_style_loss
+	    style_loss /= float(len(parser.style_layers))
+	    total_style_loss += (style_loss * img_weight)
+
+	  total_style_loss /= float(len(style_imgs))
+	  return total_style_loss
 
 #<!--Loss layer for Masked Images-->
 def sum_masked_style_losses(sess, net, style_imgs, parser):
@@ -299,6 +306,7 @@ def write_image_output(output_img, content_image, style_imgs, init_img, parser):
 	f.close()
 
 
+#<!-- Custom Function for Applying Style--->
 def applyStyle(content_image, style_image, parser, architecture, init_img):
 	#start the tensorflow Session
 	with tf.Session() as sess:
@@ -343,6 +351,16 @@ def applyStyle(content_image, style_image, parser, architecture, init_img):
 
 	#<!--write imgage output-->
 	write_image_output(output_img, content_image, style_image, init_img, parser)
+
+
+#<!---Normalization-->
+def normalize(weights):
+	denom = sum(weights)
+	if denom > 0.:
+		return [float(i) / denom for i in weights]
+	else:
+		return [0.] * len(weights)
+
 
 def main():
 	desc = "Tensorflow Implementation for Neural Style Transfer"
@@ -423,6 +441,11 @@ def main():
 		default=['conv4_2'],
 		help='VGG19 layers used for the content image')
 
+	#content layer weights
+	parser.add_argument('--content_layer_weights', nargs='+', type=str,
+		default=[1.0],
+		help='Contributions of each layer to loss')
+
 
 	#style mask images
 	parser.add_argument('--style_mask', action='store_true',
@@ -490,18 +513,28 @@ def main():
 		default='style_image.jpg',
 		help='Filename of the Content Image')
 
-
+	
 	args = parser.parse_args()
 	architecture = Network(args) #creating an object
+
+	#normalize the weights
+	args.style_layer_weights = normalize(args.style_layer_weights)
+	args.content_layer_weights = normalize(args.content_layer_weights)
+	args.style_imgs_weights = normalize(args.style_imgs_weights)
+
 	#get the parser inputs
 	contentimagePath = args.rootdir + args.baseimg
 	styleimagePath = args.rootdir + args.styleimg
 
 	srcImg, styleImg =readImage(contentimagePath, styleimagePath)
 
+	#SourceImage Shape - (3264, 1836, 3)
+	#StyleImage Shape - (1000, 1500, 3)
+
 	#get content image
 	content_image = get_content_image(srcImg, args) #(1, 512, 288, 3)
 	style_image = get_style_image(content_image, styleImg) #(1, 288, 512, 3)
+
 
 	with tf.Graph().as_default():
 		print("\n ------RENDERIN SINGLE IMAGE--------- \n")
