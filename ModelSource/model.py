@@ -226,12 +226,12 @@ def sum_masked_style_losses(sess, net, style_imgs, parser):
 def get_optimizer(loss, parser):
 
 	#printing the iterations
-	print_iterations = args.print_iterations if True else 0
+	print_iterations = parser.print_iterations if True else 0
 
 	if parser.optimizer == 'lbfgs':
 		optimizer = tf.contrib.opt.ScipyOptimizerInterface(
 			loss, method='L-BFGS-B',
-			options={'maxiter': args.max_iterations,
+			options={'maxiter': parser.max_iterations,
 					'disp': print_iterations})
 
 	elif parser.optimizer == 'adam':
@@ -378,7 +378,7 @@ def applyStyle(content_image, style_image, parser, architecture, init_img):
 			minimize_with_lbfgs(sess, net, optimizer, init_img)
 
 
-	output_img = sess.run(net['input'])
+		output_img = sess.run(network['input'])
 
 	if parser.original_colors:
 		output_img = convert_to_original_colors(np.copy(content_image), output_img, parser)
@@ -524,7 +524,12 @@ def main():
 	parser.add_argument('--print_iterations', type=int,
 		default=50,
 		help='Number of iterations between optimizer print statements')
-
+	
+	#optimizier
+	parser.add_argument('--optimizer', type=str,
+		default = 'lbfgs',
+		choices=['lbfgs', 'adam'],
+		help='Loss Minimization Operator. L-BFGS gives better results. But Adam Optimizer use less Memory')
 
 	#color convert type
 	parser.add_argument('--color_convert_type', type=str,
