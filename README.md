@@ -5,7 +5,7 @@ Python Flask application to apply NST to Normal Images
 
 To transfer the style to the Content Image pass this command
 
-``` python model.py --baseimg images/content_image.jpg --styleimg images/style_image.jpg --poolingChoice max  --max_iterations 1500 --print_iterations 100 --result_name output_1 ```
+``` python model.py --baseimg images/content_image.jpg --styleimg images/style_image.jpg --poolingChoice max  --max_iterations 1500 --print_iterations 100 --optimizer adam  --result_name output_1 ```
 
 To know the descriptions of the argument run this command
 
