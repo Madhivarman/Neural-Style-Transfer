@@ -342,6 +342,7 @@ def write_image_output(output_img, content_image, style_imgs, init_img, parser):
 #<!-- Custom Function for Applying Style--->
 def applyStyle(content_image, style_image, parser, architecture, init_img):
 	#start the tensorflow Session
+	#run every operations within the session
 	with tf.Session() as sess:
 		#build the architecture
 		network = architecture.buildModel(content_image)
@@ -352,29 +353,29 @@ def applyStyle(content_image, style_image, parser, architecture, init_img):
 		else:
 			L_style = sum_style_losses(sess, network, style_image,  parser)
 
-	#<!-- content loss-->
-	L_content = sum_content_losses(sess, network, content_image, parser)
+		#<!-- content loss-->
+		L_content = sum_content_losses(sess, network, content_image, parser)
 
-	#<!-- denoising loss-->
-	L_tv = tf.image.total_variation(net['input'])
+		#<!-- denoising loss-->
+		L_tv = tf.image.total_variation(net['input'])
 
-	#<!-- loss weights-->
-	alpha = parser.content_weight
-	beta = parser.style_weight
-	theta = parser.tv_weight
+		#<!-- loss weights-->
+		alpha = parser.content_weight
+		beta = parser.style_weight
+		theta = parser.tv_weight
 
-	#total loss
-	L_total = alpha * L_content
-	L_total += beta * L_style
-	L_total += theta * L_tv
+		#total loss
+		L_total = alpha * L_content
+		L_total += beta * L_style
+		L_total += theta * L_tv
 
-	#<!--Optimizer-->
-	optimizer = get_optimizer(L_total, parser)
+		#<!--Optimizer-->
+		optimizer = get_optimizer(L_total, parser)
 
-	if parser.optimizer == 'adam':
-		minimize_with_adam(sess, net, optimizer, init_img, L_total, parser)
-	elif parser.optimizer == 'lbfgs':
-		minimize_with_lbfgs(sess, net, optimizer, init_img)
+		if parser.optimizer == 'adam':
+			minimize_with_adam(sess, net, optimizer, init_img, L_total, parser)
+		elif parser.optimizer == 'lbfgs':
+			minimize_with_lbfgs(sess, net, optimizer, init_img)
 
 
 	output_img = sess.run(net['input'])
