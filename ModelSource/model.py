@@ -119,7 +119,23 @@ def style_layer_loss(a, x):
 	return loss
 
 
+#<!--content layer loss-->
+def content_layer_loss(p, x, parser):
+	_, h, w, d = p.get_shape()
+	M = h.value * w.value
+	N = d.value
+	if parser.content_loss_function == 1:
+		K = 1. / (2. * N**0.5 * M**0.5)
+	elif parser.content_loss_function == 2:
+		K = 1. / (N * M)
+	elif parser.content_loss_function == 3:
+		K = 1. / 2.
+	
+	loss = K * tf.reduce_sum(tf.pow((x - p), 2))
 
+	return loss
+
+	
 #<!--Loss Layer for normal content image-->
 def sum_style_losses(sess, net, style_imgs, parser):
 	  total_style_loss = 0.
@@ -142,6 +158,23 @@ def sum_style_losses(sess, net, style_imgs, parser):
 
 	  total_style_loss /= float(len(style_imgs))
 	  return total_style_loss
+
+
+#<!--Sum content losses-->
+def sum_content_losses(sess, net, content_img, parser):
+	#run the session
+	sess.run(net['input'].assign(content_img))
+	content_loss = 0.
+	#iterate through the content layers
+	for layer, weight in zip(parser.content_layers, parser.content_layer_weights):
+		p =  sess.run(net[layer])
+		x =  net[layer]
+		p =  tf.convert_to_tensor(p)
+		content_loss += content_layer_loss(p, x, parser) * weight
+
+	content_loss /= float(len(parser.content_layers))
+	return content_loss
+
 
 #<!--Loss layer for Masked Images-->
 def sum_masked_style_losses(sess, net, style_imgs, parser):
@@ -320,7 +353,7 @@ def applyStyle(content_image, style_image, parser, architecture, init_img):
 			L_style = sum_style_losses(sess, network, style_image,  parser)
 
 	#<!-- content loss-->
-	L_content = sum_content_losses(sess, network, content_image)
+	L_content = sum_content_losses(sess, network, content_image, parser)
 
 	#<!-- denoising loss-->
 	L_tv = tf.image.total_variation(net['input'])
