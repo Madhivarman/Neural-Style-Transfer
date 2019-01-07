@@ -135,7 +135,7 @@ def content_layer_loss(p, x, parser):
 
 	return loss
 
-	
+
 #<!--Loss Layer for normal content image-->
 def sum_style_losses(sess, net, style_imgs, parser):
 	  total_style_loss = 0.
@@ -254,7 +254,7 @@ def minimize_with_adam(sess, net, optimizer, init_img, loss, parser):
 	while(iterations < parser.max_iterations):
 		sess.run(init_op)
 
-		if iterations % args.print_iterations == 0 and parser.verbose:
+		if iterations % parser.print_iterations == 0 or parser.verbose:
 			curr_loss = loss.eval()
 			print("At Iteration:{} \t loss= {}".format(iterations, curr_loss))
 
@@ -311,10 +311,16 @@ def write_image(path, img):
 #<!--- write the Image output-->
 def write_image_output(output_img, content_image, style_imgs, init_img, parser):
 
-	out_dir = os.path.join(parser.img_output_dir, parser.result_name)
-	img_path = os.path.join(out_dir, parser.result_name + '.png')
-	content_path = os.path.join(out_dir, 'content.png')
-	init_path = os.path.join(out_dir, 'init.png')
+	out_dir = parser.img_output_dir
+	img_path = out_dir + "/"+ parser.result_name + '.png'
+	content_path = out_dir + '/content.png'
+	init_path = out_dir + '/init.png'
+	output_file_path = out_dir + '/meta_data.txt'
+
+	#out_dir = os.path.join(parser.img_output_dir, parser.result_name)
+	#img_path = os.path.join(out_dir, parser.result_name + '.png')
+	#content_path = os.path.join(out_dir, 'content.png')
+	#init_path = os.path.join(out_dir, 'init.png')
 
 	#write the image
 	write_image(img_path, output_img)
@@ -322,8 +328,7 @@ def write_image_output(output_img, content_image, style_imgs, init_img, parser):
 	write_image(init_path, init_img)
 
 	#save the configuration settings
-	out_file  = os.path.join(out_dir, 'meta_data.txt')
-	f = open(out_file, 'w') #open the file in write mode
+	f = open(output_file_path, 'w') #open the file in write mode
 	f.write("Image_Name:{}\n".format(parser.result_name))
 	f.write("Content Image Name:{}\n".format(parser.content_img))
 	f.write("Init Type Name:{}\n".format(parser.init_img_type))
@@ -342,7 +347,7 @@ def write_image_output(output_img, content_image, style_imgs, init_img, parser):
 #<!-- Custom Function for Applying Style--->
 def applyStyle(content_image, style_image, parser, architecture, init_img):
 	#start the tensorflow Session
-	#run every operations within the session
+	#run all the operations within the session
 	with tf.Session() as sess:
 		#build the architecture
 		network = architecture.buildModel(content_image)
@@ -357,7 +362,7 @@ def applyStyle(content_image, style_image, parser, architecture, init_img):
 		L_content = sum_content_losses(sess, network, content_image, parser)
 
 		#<!-- denoising loss-->
-		L_tv = tf.image.total_variation(net['input'])
+		L_tv = tf.image.total_variation(network['input'])
 
 		#<!-- loss weights-->
 		alpha = parser.content_weight
@@ -373,9 +378,9 @@ def applyStyle(content_image, style_image, parser, architecture, init_img):
 		optimizer = get_optimizer(L_total, parser)
 
 		if parser.optimizer == 'adam':
-			minimize_with_adam(sess, net, optimizer, init_img, L_total, parser)
+			minimize_with_adam(sess, network, optimizer, init_img, L_total, parser)
 		elif parser.optimizer == 'lbfgs':
-			minimize_with_lbfgs(sess, net, optimizer, init_img)
+			minimize_with_lbfgs(sess, network, optimizer, init_img)
 
 
 		output_img = sess.run(network['input'])
@@ -524,12 +529,16 @@ def main():
 	parser.add_argument('--print_iterations', type=int,
 		default=50,
 		help='Number of iterations between optimizer print statements')
-	
-	#optimizier
+
+	#optimizations
 	parser.add_argument('--optimizer', type=str,
-		default = 'lbfgs',
+		default = 'adam',
 		choices=['lbfgs', 'adam'],
 		help='Loss Minimization Operator. L-BFGS gives better results. But Adam Optimizer use less Memory')
+
+	#original colors
+	parser.add_argument('--original_colors', action='store_true',
+		help = 'Transfer the Style but not the colors')
 
 	#color convert type
 	parser.add_argument('--color_convert_type', type=str,
